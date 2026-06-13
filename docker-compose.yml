@@ -1,0 +1,153 @@
+# SOWER Municipal Node — Docker Compose Template
+# v0.1 — Paul Statchen, Santa Cruz CA, 2026
+#
+# This is the minimum viable SOWER node stack.
+# Designed to run on any x86 hardware capable of Docker Compose.
+# Reference implementation extends MESA platform.
+#
+# AI Collaboration: Claude (Anthropic) assisted in drafting this file.
+# "The worker is due their wages." — Luke 10:7
+#
+# BEFORE STARTING:
+# 1. Copy .env.example to .env and fill in your values
+# 2. Set SOWER_NODE_NAME to your institution name
+# 3. Configure ENERGY_METER_ENDPOINT if you have smart PDU/metering
+# 4. Run: docker compose up -d
+
+services:
+
+  # ── IPFS NODE ──────────────────────────────────────────────────────
+  # Content-addressed storage for ZERA files
+  ipfs:
+    image: ipfs/kubo:latest
+    container_name: sower_ipfs
+    restart: unless-stopped
+    environment:
+      - IPFS_PROFILE=server
+    volumes:
+      - ipfs_data:/data/ipfs
+    ports:
+      - "4001:4001"       # Swarm (peer connections)
+      - "5001:5001"       # API (internal only — do not expose publicly)
+      - "8080:8080"       # Gateway (public read access)
+    networks:
+      - sower_net
+
+  # ── PEERTUBE ───────────────────────────────────────────────────────
+  # Federated video platform — ActivityPub compatible
+  peertube:
+    image: chocobozzz/peertube:production-bookworm
+    container_name: sower_peertube
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      - PEERTUBE_DB_USERNAME=${PEERTUBE_DB_USER:-peertube}
+      - PEERTUBE_DB_PASSWORD=${PEERTUBE_DB_PASS:-changeme}
+      - PEERTUBE_DB_HOSTNAME=postgres
+      - PEERTUBE_REDIS_HOSTNAME=redis
+      - PEERTUBE_WEBSERVER_HOSTNAME=${SOWER_DOMAIN:-localhost}
+      - PEERTUBE_WEBSERVER_PORT=443
+      - PEERTUBE_WEBSERVER_HTTPS=true
+      - PEERTUBE_ADMIN_EMAIL=${ADMIN_EMAIL:-admin@localhost}
+      - PEERTUBE_SECRET=${PEERTUBE_SECRET:-changeme-generate-a-real-secret}
+    volumes:
+      - peertube_data:/data
+      - peertube_config:/config
+    ports:
+      - "9000:9000"
+    networks:
+      - sower_net
+
+  # ── POSTGRES ───────────────────────────────────────────────────────
+  postgres:
+    image: postgres:15-alpine
+    container_name: sower_postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${PEERTUBE_DB_USER:-peertube}
+      - POSTGRES_PASSWORD=${PEERTUBE_DB_PASS:-changeme}
+      - POSTGRES_DB=peertube
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - sower_net
+
+  # ── REDIS ──────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: sower_redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    networks:
+      - sower_net
+
+  # ── ENERGY METERING AGENT ─────────────────────────────────────────
+  # Publishes node power consumption to open ledger endpoint
+  # Replace with your actual metering integration
+  energy_agent:
+    image: python:3.12-slim
+    container_name: sower_energy_agent
+    restart: unless-stopped
+    environment:
+      - NODE_NAME=${SOWER_NODE_NAME:-unnamed-sower-node}
+      - NODE_LOCATION=${SOWER_NODE_LOCATION:-Santa Cruz, CA}
+      - METER_ENDPOINT=${ENERGY_METER_ENDPOINT:-none}
+      - PUBLISH_INTERVAL_SECONDS=60
+    volumes:
+      - ./energy_agent:/app
+    command: python /app/agent.py
+    networks:
+      - sower_net
+    # NOTE: Energy agent script (energy_agent/agent.py) is a stub.
+    # Implement metering integration for your hardware.
+    # See docs/architecture.md Layer 2 for specification.
+
+  # ── LOCAL AI INFERENCE (OPTIONAL) ─────────────────────────────────
+  # Ollama for sovereign local AI — no cloud dependency
+  # Comment out if you prefer cloud AI APIs only
+  ollama:
+    image: ollama/ollama:latest
+    container_name: sower_ollama
+    restart: unless-stopped
+    volumes:
+      - ollama_data:/root/.ollama
+    ports:
+      - "11434:11434"
+    networks:
+      - sower_net
+    # Pull a model after first start:
+    # docker exec sower_ollama ollama pull phi3
+
+  # ── NGINX REVERSE PROXY ───────────────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: sower_nginx
+    restart: unless-stopped
+    depends_on:
+      - peertube
+      - ipfs
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - sower_net
+
+# ── VOLUMES ──────────────────────────────────────────────────────────
+volumes:
+  ipfs_data:
+  peertube_data:
+  peertube_config:
+  postgres_data:
+  redis_data:
+  ollama_data:
+
+# ── NETWORKS ─────────────────────────────────────────────────────────
+networks:
+  sower_net:
+    driver: bridge
