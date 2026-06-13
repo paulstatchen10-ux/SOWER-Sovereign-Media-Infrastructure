@@ -1,101 +1,124 @@
-# SOWER
-### Sovereign Federated Media Infrastructure
+# SOWER UI Specification
 
-> *"A sower went out to sow."* — Matthew 13:3  
-> The infrastructure belongs to the neighbors.
+> Minimal by default. Always.
 
 ---
 
-SOWER is an open-source, federated media platform designed to replace centralized video and media infrastructure with a municipal-node backbone, zero tokenization, radical energy transparency, and a novel universal container format called **ZERA**.
+## Design Philosophy
 
-Where existing platforms optimize for engagement, advertising revenue, and proprietary lock-in — SOWER optimizes for **sovereignty, legibility, and long-term civic resilience.**
+The SOWER UI is not a product. It is a civic utility.
 
----
+It does not optimize for engagement, session time, or return visits. It optimizes for the user finding what they came for and leaving satisfied. These are opposite design goals from every major platform currently operating.
 
-## Core Design Constraints
+The default state of the SOWER UI contains exactly three elements:
+1. A search bar
+2. A chronological feed of content from explicitly followed sources
+3. An energy display showing the watt-hour cost of the current session
 
-These are architectural commitments, not preferences. Locked before implementation begins.
-
-| Constraint | Commitment |
-|---|---|
-| **No tokenization. Ever.** | No convertible currency layer. No exchange-listed token. Energy accounting is for transparency only — never for exchange. |
-| **Energy transparency** | Every node publishes actual power draw. Every stream shows watt-hour cost to the user in real time. |
-| **Municipal node backbone** | Primary infrastructure is civic hardware — libraries, schools, county facilities, university nodes. |
-| **Minimal by default** | Zero algorithmic feed. No engagement optimization. User adds complexity. Platform never does. |
-| **AI-agnostic open API** | Any AI system connects as a peer neighbor. Human clients and AI agents are equivalent interface clients. |
+Nothing else is present by default. Everything else is opt-in.
 
 ---
 
-## The ZERA Format
+## Core UI Constraints
 
-**ZERA** (from the Hebrew *zera*, זֶרַע — meaning *seed*) is the native media container format for SOWER.
+These are locked alongside the platform design constraints:
 
-Instead of storing 6–8 discrete quality copies of every media file, ZERA stores a single latent-space representation — a mathematical seed — from which any resolution, format, or bitrate is derived on demand at playback time.
-
-- **Stream down** — derive 480p from the latent for a low-bandwidth mobile client
-- **Generate up** — AI systems read the latent directly to extend, remix, or derive new formats
-- **One file per piece of content** — content-addressed on IPFS, no redundant copies
-
-See [`docs/ZERA_format_spec.md`](docs/ZERA_format_spec.md) for the full specification.
+- **No algorithmic feed** — ever, as a platform default
+- **No autoplay** — the user initiates every piece of content
+- **No engagement metrics displayed** — no view counts, no like counts, no trending sections
+- **No notifications by default** — user enables if desired
+- **No dark patterns** — no infinite scroll, no variable reward loops, no urgency manufactured by the interface
+- **Energy display always visible** — watt-hours consumed this session, this stream
 
 ---
 
-## Platform Architecture
+## Default Interface Layout
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                    SOWER STACK                      │
-├─────────────────────────────────────────────────────┤
-│  UI Layer        │ Minimal by default. No algo feed  │
-│  AI API Layer    │ Open. Any model. Human = AI peer  │
-│  Identity Layer  │ Nostr-compatible. User owns keys  │
-│  Federation      │ ActivityPub / PeerTube protocol   │
-│  Node Layer      │ Municipal civic hardware backbone │
-│  Energy Layer    │ Per-node metering. Public ledger  │
-│  Storage Layer   │ IPFS content-addressed ZERA files │
-└─────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────┐
+│  SOWER          [search bar]        ⚡ 0.3Wh │
+├─────────────────────────────────────────────┤
+│                                             │
+│  Following — chronological                  │
+│                                             │
+│  [Content from sources user follows,        │
+│   newest first, no ranking applied]         │
+│                                             │
+│  [Load more]                                │
+│                                             │
+└─────────────────────────────────────────────┘
 ```
 
----
-
-## Reference Implementation
-
-The municipal node infrastructure reference is **MESA** (Municipal Enterprise Service Architecture):
-
-👉 [github.com/paulstatchen10-ux/MESA---Municipal-Enterprise-Service-Architecture](https://github.com/paulstatchen10-ux/MESA---Municipal-Enterprise-Service-Architecture)
+That is the complete default UI. No sidebar. No recommendations. No trending. No promoted content.
 
 ---
 
-## Repository Structure
+## Progressive Complexity Model
 
-```
-SOWER/
-├── README.md
-├── LICENSE
-├── CONTRIBUTING.md
-├── docs/
-│   ├── architecture.md
-│   └── ZERA_format_spec.md
-├── zera/
-│   └── README.md
-├── node/
-│   └── docker-compose.yml
-└── ui/
-    └── README.md
-```
+Users who want more functionality add it themselves. The platform provides:
+
+- A local plugin API for client-side filter scripts
+- A preference store (local, never server-side by default)
+- Documentation for writing your own recommendation logic
+
+Example user plugins (community-developed, not platform defaults):
+- "Show me content from my region first"
+- "Filter by energy cost under X watt-hours per hour"
+- "Surface content my followed accounts have commented on"
 
 ---
 
-## License
+## Energy Display
 
-Apache 2.0 — Copyright 2026 Paul Statchen
+The energy display is a first-class UI element, always visible, never dismissible.
+
+It shows:
+- Watt-hours consumed this session
+- Watt-hours consumed by the current stream
+- Node location serving the current stream
+- A simple comparison: "equivalent to running a 60W bulb for X minutes"
+
+This is civic education, not a deterrent. Users who understand the real cost of media infrastructure make better decisions. That is the point.
 
 ---
 
-## AI Collaboration Attribution
+## AI Interface
 
-Developed in collaborative dialogue with **Claude (Anthropic)**.  
-Vision, design constraints, naming (SOWER / ZERA), and civic philosophy are original work by **Paul Statchen**.  
-Claude assisted with technical articulation, specification language, and document structure.
+The AI query interface is a clean text input, available from any screen. It connects to whatever AI system the user has configured — local Ollama, Claude, Gemini, or any open API endpoint. The platform does not provide or prefer any AI system.
 
-> *"The worker is due their wages."* — Luke 10:7
+The AI interface can:
+- Search and summarize content
+- Describe what a ZERA file contains without rendering it
+- Help the user write filter scripts for their personal recommendation layer
+- Operate directly on ZERA latents for users who want generative features
+
+---
+
+## Accessibility
+
+SOWER UI targets WCAG 2.1 AA compliance as a baseline. Civic infrastructure must be accessible to all community members.
+
+---
+
+## Implementation Notes
+
+- Target: Progressive Web App (PWA) — works on any device, no app store required
+- Framework: Preference for lightweight, dependency-minimal implementations
+- Offline capability: Cached content playable without network connection
+- Mobile first: Designed for the lowest-power device in the community first
+
+---
+
+## Contributing to UI Design
+
+UI contributions are welcome. Before proposing any feature, answer this question:
+
+> Does this feature serve the user's intent, or does it serve the platform's engagement metrics?
+
+If the answer is engagement metrics — do not submit it.
+
+---
+
+*v0.1 — Paul Statchen, Santa Cruz CA, 2026*  
+*AI Collaboration: Claude (Anthropic) assisted in drafting this document.*  
+*"The worker is due their wages." — Luke 10:7*
